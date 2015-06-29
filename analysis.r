@@ -80,6 +80,9 @@ intervals <- intervals %>%
   ungroup() %>%
   mutate(min_year_f=cut(min_year, 5)) 
 
+# Write out CSV file
+write.csv(intervals, file='output.csv')
+
 # Calculate quantiles
 quantiles <- intervals
 quantiles <- quantiles %>%
