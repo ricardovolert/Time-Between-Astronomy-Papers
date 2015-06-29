@@ -3,26 +3,28 @@ library(dplyr)
 library(memoise)
 library(rjson)
 
-# Read URL content, with throttling
-if (!exists('read_url')) {
+# Read URL content, with throttling and caching of the response
+if (!file.exists('read_url.rds')) {
   read_url <- memoise(function(url, throttle=getOption('ads.throttle', 1)) {
     Sys.sleep(throttle)
-
     con <- url(url)
     on.exit(close(con))
     print(url)
     return(readLines(con, warn=FALSE))
   })
-  #read_url <- readRDS('read_url.rds')
+} else {
+  read_url <- readRDS('read_url.rds')
 }
 
 read_urls <- function(urls) {
   return(sapply(urls, read_url))
 }
 
+# Save response cache to disk upon exit
+on.exit(saveRDS(read_url, 'read_url.rds'))
+
 # Read ADS dev key
 ads_key <- Sys.getenv("ADS_KEY")
-
 
 # Get pubdates for the first 10 papers that are 1st author
 ads_url <- str_c("http://adslabs.org/adsabs/api/search/?q=author:%22^@author.%22&sort=DATE+asc&fl=pubdate&max_rows=40&filter=property:refereed&dev_key=", ads_key)
@@ -108,4 +110,3 @@ p2 <- ggplot(intervals, aes(x=npap)) +
   ylab("Number of authors") +
   scale_x_discrete() 
 
-saveRDS(read_url, 'read_url.rds') 
