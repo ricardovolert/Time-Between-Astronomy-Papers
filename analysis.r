@@ -9,7 +9,7 @@ if (!file.exists('read_url.rds')) {
     Sys.sleep(throttle)
     con <- url(url)
     on.exit(close(con))
-    print(url)
+    message(url)
     return(readLines(con, warn=FALSE))
   })
 } else {
@@ -19,9 +19,6 @@ if (!file.exists('read_url.rds')) {
 read_urls <- function(urls) {
   return(sapply(urls, read_url))
 }
-
-# Save response cache to disk upon exit
-on.exit(saveRDS(read_url, 'read_url.rds'))
 
 # Read ADS dev key
 ads_key <- Sys.getenv("ADS_KEY")
@@ -35,7 +32,7 @@ journals <- c('APJ', 'MNRAS', 'A&A', 'AJ', 'PASP', 'ICAR', 'NATUR', 'SCI')
 # authors.rds not included (for privacy reasons), but you can easily create your own.
 data <- data_frame(author=unlist(readRDS("authors.rds"))) %>%
   mutate(id=row_number()) %>%
-  filter(row_number() <= 1000) 
+  filter(row_number() <= 3000) 
 
 # Loop through the list of authors
 intervals <- ldply(data$author, function(a) {
@@ -76,9 +73,10 @@ intervals <- intervals %>%
   # Compute differences between successive papers
   mutate(diff=c(NA, diff(months))) %>%
   # Only keep the first 15 papers
-  filter(npap > 1 & npap < 15 & all(diff > 0, na.rm=TRUE)) %>%
-  ungroup() %>%
-  mutate(min_year_f=cut(min_year, 5)) 
+  filter(npap > 1 & all(diff > 0, na.rm=TRUE)) %>%
+  ungroup() 
+
+write.csv(intervals, file="data.csv")
 
 # Calculate quantiles
 quantiles <- intervals
@@ -95,7 +93,7 @@ quantiles <- quantiles %>%
 max_npap <- intervals
 max_npap <- max_npap %>%
   group_by(id) %>%
-  summarise(npap_max = max(npap))
+  summarise(max_npap = max(npap))
 
 # Plot the quantiles
 p <- ggplot(quantiles, aes(x=npap)) +
@@ -105,8 +103,10 @@ p <- ggplot(quantiles, aes(x=npap)) +
   ylab("Median number of months between papers") +
   xlab("Number of papers") 
 
-p2 <- ggplot(intervals, aes(x=npap)) +
+p2 <- ggplot(max_npap, aes(x=max_npap)) +
   geom_histogram(binwidth=1) +
   ylab("Number of authors") +
   scale_x_discrete() 
 
+# Save response cache to disk upon exit
+saveRDS(read_url, 'read_url.rds')
