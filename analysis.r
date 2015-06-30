@@ -31,8 +31,7 @@ journals <- c('APJ', 'MNRAS', 'A&A', 'AJ', 'PASP', 'ICAR', 'NATUR', 'SCI')
 # Read list of authors from authors.rds, as a character vector where each item is Lastname, F.
 # authors.rds not included (for privacy reasons), but you can easily create your own.
 data <- data_frame(author=unlist(readRDS("authors.rds"))) %>%
-  mutate(id=row_number()) %>%
-  filter(row_number() <= 3000) 
+  mutate(id=row_number())
 
 # Loop through the list of authors
 intervals <- ldply(data$author, function(a) {
@@ -72,19 +71,17 @@ intervals <- intervals %>%
   filter(zero_month == FALSE & min_year > minyear) %>%
   # Compute differences between successive papers
   mutate(diff=c(NA, diff(months))) %>%
-  # Only keep the first 15 papers
-  filter(npap > 1 & all(diff > 0, na.rm=TRUE)) %>%
   ungroup() 
 
 write.csv(intervals, file="data.csv")
 
-# Write out CSV file
-write.csv(intervals, file='output.csv')
-
 # Calculate quantiles
 quantiles <- intervals
 quantiles <- quantiles %>%
+  # Only look at first 15 papers
+  filter(npap <= 15 & npap > 1) %>%
   group_by(npap) %>%
+  # Calculate quantiles
   summarise(q10 = quantile(diff, 0.1, na.rm=TRUE),
             q25 = quantile(diff, 0.25, na.rm=TRUE),
             q50 = quantile(diff, 0.5, na.rm=TRUE),
@@ -109,7 +106,17 @@ p <- ggplot(quantiles, aes(x=npap)) +
 p2 <- ggplot(max_npap, aes(x=max_npap)) +
   geom_histogram(binwidth=1) +
   ylab("Number of authors") +
-  scale_x_discrete() 
+  scale_x_discrete()
+
+p3 <- ggplot(intervals, aes(x=bibcode)) +
+  xlab("Journal") +
+  ylab("Number of papers published") +
+  geom_histogram()
+
+p4 <- ggplot(intervals, aes(x=factor(month))) +
+  xlab("Month") +
+  ylab("Number of papers published") +
+  geom_histogram(binwidth=1)
 
 # Save response cache to disk upon exit
 saveRDS(read_url, 'read_url.rds')
