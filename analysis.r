@@ -31,7 +31,8 @@ journals <- c('APJ', 'MNRAS', 'A&A', 'AJ', 'PASP', 'ICAR', 'NATUR', 'SCI')
 # Read list of authors from authors.rds, as a character vector where each item is Lastname, F.
 # authors.rds not included (for privacy reasons), but you can easily create your own.
 data <- data_frame(author=unlist(readRDS("authors.rds"))) %>%
-  mutate(id=row_number())
+  mutate(id=row_number()) %>%
+  filter(!(str_detect(author, 'Array') | str_detect(author, 'University') | str_detect(author, 'Collaboration') | str_detect(author, 'University'))) 
 
 # Loop through the list of authors
 intervals <- ldply(data$author, function(a) {
