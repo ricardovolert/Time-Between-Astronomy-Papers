@@ -41,11 +41,10 @@ intervals <- ldply(data$author, function(a) {
   text <- NULL
   tries <- 0
   error <- NULL
-  while (is.null(text)) {
-    text <- tryCatch(read_urls(url), error=function(e) { error <<- e; Sys.sleep(20); NULL })
-    tries <- tries + 1
-    if (tries > 10)
-      stop(error)
+
+  text <- tryCatch(read_urls(url), error=function(e) { error <<- e; Sys.sleep(20); NULL })
+  if (is.null(text)) {
+    return(NULL)
   }
   docs <- fromJSON(text)$results$docs
 
