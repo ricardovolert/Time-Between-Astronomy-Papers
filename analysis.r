@@ -36,7 +36,17 @@ data <- data_frame(author=unlist(readRDS("authors.rds"))) %>%
 # Loop through the list of authors
 intervals <- ldply(data$author, function(a) {
   # Get the list of papers from the JSON returned by the ADS API
-  docs <- fromJSON(read_urls(str_replace(ads_url, '@author', URLencode(a))))$results$docs
+  url <- str_replace(ads_url, '@author', URLencode(a))
+  text <- NULL
+  tries <- 0
+  error <- NULL
+  while (is.null(text)) {
+    text <- tryCatch(read_urls(url), error=function(e) { error <<- e; Sys.sleep(1); NULL })
+    tries <- tries + 1
+    if (tries > 10)
+      stop(e)
+  }
+  docs <- fromJSON(text)$results$docs
 
   # Loop through the list of papers for the author
   ldply(docs, function(d) {
