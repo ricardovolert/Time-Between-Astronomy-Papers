@@ -17,6 +17,8 @@ theme_update(axis.title.x = element_text(vjust=0),
       axis.title.y = element_text(vjust=1, angle=90))
 ```
 
+Get code & data from the [GitHub repository](https://github.com/stefano-meschiari/Time-Between-Astronomy-Papers)
+
 ## Intro
 I've been interested for a while in mining ADS (NASA's Astrophysics Data System, an online repository of bibliographic records). Using the [ADS developer API](https://github.com/adsabs/adsabs-dev-api), it is quite simple to download bibliographical records as JSON data and do some analysis on a sample of astronomical publications. (See [this post](http://www.stefanom.org/astrotrends-a-new-tool-to-track-astronomy-topics-in-the-literature/) and [this post](http://www.stefanom.org/astrotrends-no-so-weaselly-after-all/) to see some of the previous experiments I did on ADS data.)
 
@@ -237,4 +239,4 @@ saveRDS(read_url, 'read_url.rds')
 
 ### Caveats
   * Authors that have the same initial are counted together. For instance, [Ford, E.](http://adsabs.harvard.edu/cgi-bin/nph-abs_connect?db_key=AST&db_key=PRE&qform=AST&arxiv_sel=astro-ph&arxiv_sel=cond-mat&arxiv_sel=cs&arxiv_sel=gr-qc&arxiv_sel=hep-ex&arxiv_sel=hep-lat&arxiv_sel=hep-ph&arxiv_sel=hep-th&arxiv_sel=math&arxiv_sel=math-ph&arxiv_sel=nlin&arxiv_sel=nucl-ex&arxiv_sel=nucl-th&arxiv_sel=physics&arxiv_sel=quant-ph&arxiv_sel=q-bio&sim_query=YES&ned_query=YES&adsobj_query=YES&aut_logic=OR&obj_logic=OR&author=Ford%2C+E.&object=&start_mon=&start_year=&end_mon=&end_year=&ttl_logic=OR&title=&txt_logic=OR&text=&nr_to_return=200&start_nr=1&jou_pick=ALL&ref_stems=&data_and=ALL&group_and=ALL&start_entry_day=&start_entry_mon=&start_entry_year=&end_entry_day=&end_entry_mon=&end_entry_year=&min_score=&sort=ODATE&data_type=SHORT&aut_syn=YES&ttl_syn=YES&txt_syn=YES&aut_wt=1.0&obj_wt=1.0&ttl_wt=0.3&txt_wt=3.0&aut_wgt=YES&obj_wgt=YES&ttl_wgt=YES&txt_wgt=YES&ttl_sco=YES&txt_sco=YES&version=1) matches at least two authors (Edward Ford and Eric B. Ford). Unfortunately, using, say, `^Ford, E. B.` as the author and forcing exact name matching on ADS means that we lose records where the author is recorded as `^Ford, E.`. There may be a better solution to avoid this.
-  * Any other ideas? Suggestions on how to improve this analysis? File a bug or a pull request :)
+  * Any other ideas? Suggestions on how to improve this analysis? File a bug or a pull request on the GitHub repository :)
