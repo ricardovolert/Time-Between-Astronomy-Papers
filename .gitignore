@@ -1,2 +1,6 @@
 *.rds
 .*
+*.Rdata
+*.rdb
+*.rdx
+*_cache
