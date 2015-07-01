@@ -2,21 +2,19 @@
 title: "What is the average time between papers published in the astronomy community?"
 author: "Stefano Meschiari"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  md_document:
+    variant: markdown_github
 ---
-```{r setup, echo=FALSE}
+```{r setup, echo=FALSE, warning=FALSE}
 library(knitr)
+library(ggplot2)
+library(latex2exp)
 opts_chunk$set(fig.width=10, fig.height=7, cache=TRUE)
 opts_chunk$set(cache=TRUE)
-```
-
-
-```{r echo=FALSE}
-library(stringr)
-library(dplyr)
-library(memoise)
-library(rjson)
-library(latex2exp)
+theme_set(theme_gray(base_family="Avenir Next", base_size=15))
+theme_update(axis.title.x = element_text(vjust=0),
+      axis.title.y = element_text(vjust=1, angle=90))
 ```
 
 ## Intro
@@ -64,6 +62,8 @@ ggplot(max_npap, aes(x=max_npap)) +
   scale_x_discrete()
 ```
 
+The rapid drop-off beyond 18 papers might be due to the fact that the total number of records is 40 (which include papers that are ultimately filtered out by the criteria above).
+
 ### Number of papers published per journal
 The following plot shows the number of papers published, grouped by journal name (the usual suspects: ApJ, AJ, A&A, Icarus, MNRAS, Nature, and Science). As expected, ApJ, A&A, and MNRAS figure prominently.
 ```{r}
@@ -81,14 +81,14 @@ ggplot(intervals, aes(x=factor(month))) +
   xlab("Month") +
   ylab("Number of 1st-author papers published") +
   geom_histogram(binwidth=1) +
-  scale_x_discrete(labels=month.name)
+  scale_x_discrete(labels=month.abb)
 ```
 
 ## Procedure
 The following R code was used to create the dataset. 
 
 I use the `stringr`, `dplyr`, and `plyr` packages to munge the data I download from ADS. The `rjson` package is used to convert JSON data into R objects.
-```{r}
+```{r, warning=FALSE}
 library(stringr)
 library(dplyr)
 library(memoise)
@@ -122,24 +122,29 @@ My ADS dev key is stored as an environment variable (you can get one from ADS).
 ads_key <- Sys.getenv("ADS_KEY")
 ```
 
-This is the template URL used to query ADS. 
+This is the template URL used to query ADS. It retrieves up to 40 records of refereed 1st-author papers for the author.
 ```{r}
 # Get pubdates for the first 40 papers that are 1st author
 ads_url <- str_c("http://adslabs.org/adsabs/api/search/?q=author:%22^@author.%22&sort=DATE+asc&fl=pubdate&max_rows=40&filter=property:refereed&dev_key=", ads_key)
 ```
 
-These are the journals.
+These are the journals used. We excluded other journals since the ADS records for them don't always include the month (the month is set to 0). This is also the case for some of the older papers (e.g., [this paper](http://adsabs.harvard.edu/abs/1960MNRAS.121..525A)). In order to avoid including records with incomplete date information, I (a) exclude authors whose first paper is before 1960; and (b) remove authors that have *any* papers with the month field set to 0.
 ```{r}
 journals <- c('APJ', 'MNRAS', 'A&A', 'AJ', 'PASP', 'ICAR', 'NATUR', 'SCI')
+minyear <- 1960
 ```
 
+I start with a list of authors (in the form Lastname, F.) that I gathered from previous work on [AstroTRENDS](http://www.stefanom.org/playpen/Trends/keywords/). I remove some of the spurious authors that made their way in there.
 ```{r, eval=FALSE}
 # Read list of authors from authors.rds, as a character vector where each item is Lastname, F.
 # authors.rds not included (for privacy reasons), but you can easily create your own.
 data <- data_frame(author=unlist(readRDS("authors.rds"))) %>%
   mutate(id=row_number()) %>%
   filter(!(str_detect(author, 'Array') | str_detect(author, 'University') | str_detect(author, 'Collaboration') | str_detect(author, 'University'))) 
+```
 
+I then loop through the list of authors and download the JSON record from ADS; when the record is retrieved, I parse the bibcode, year and month and exclude any paper not in the "approved" list of journals.
+```{r, eval=FALSE}
 # Loop through the list of authors
 intervals <- ldply(data$author, function(a) {
   # Get the list of papers from the JSON returned by the ADS API
@@ -168,9 +173,10 @@ intervals <- ldply(data$author, function(a) {
     }
   }, .id=NULL)
 })
+```
 
-minyear <- 1960
-
+From the raw data downloaded, I set up a new `intervals` data frame that contains some derived data:
+```{r, eval=FALSE}
 # Create "intervals" dataframe -- the diff column will contain the number of months elapsed
 # between the (i+1)-th and the i-th npap.
 intervals <- intervals %>%
@@ -189,8 +195,12 @@ intervals <- intervals %>%
   mutate(diff=c(NA, diff(months))) %>%
   ungroup() 
 
+# Save the file as data.csv
 write.csv(intervals, file="data.csv")
+```
 
+Since the `diff` column (the interval between the i-th and the (i-1)-th paper, in months) ends up being quite noisy -- as expected -- I derive median and 10%, 25%, 75% and 90% quantiles.
+```{r, eval=FALSE}
 # Calculate quantiles
 quantiles <- intervals
 quantiles <- quantiles %>%
@@ -206,14 +216,24 @@ quantiles <- quantiles %>%
             q90 = quantile(diff, 0.9, na.rm=TRUE)) %>%
   ungroup()
 write.csv(quantiles, file="quantiles.csv")
+```
 
+Then, I compute the maximum number of papers for each author `id` to derive the number of papers histogram (see previous section.)
+```{r, eval=FALSE}
 max_npap <- intervals
 max_npap <- max_npap %>%
   group_by(id) %>%
   summarise(max_npap = max(npap))
 
 write.csv(max_npap, file="max_npap.csv")
+```
 
+Finally, I save the memoised function to disk to cache the raw JSON data.
+```{r, eval=FALSE}
 # Save response cache to disk upon exit
 saveRDS(read_url, 'read_url.rds')
 ```
+
+### Caveats
+  * Authors that have the same initial are counted together. For instance, [Ford, E.](http://adsabs.harvard.edu/cgi-bin/nph-abs_connect?db_key=AST&db_key=PRE&qform=AST&arxiv_sel=astro-ph&arxiv_sel=cond-mat&arxiv_sel=cs&arxiv_sel=gr-qc&arxiv_sel=hep-ex&arxiv_sel=hep-lat&arxiv_sel=hep-ph&arxiv_sel=hep-th&arxiv_sel=math&arxiv_sel=math-ph&arxiv_sel=nlin&arxiv_sel=nucl-ex&arxiv_sel=nucl-th&arxiv_sel=physics&arxiv_sel=quant-ph&arxiv_sel=q-bio&sim_query=YES&ned_query=YES&adsobj_query=YES&aut_logic=OR&obj_logic=OR&author=Ford%2C+E.&object=&start_mon=&start_year=&end_mon=&end_year=&ttl_logic=OR&title=&txt_logic=OR&text=&nr_to_return=200&start_nr=1&jou_pick=ALL&ref_stems=&data_and=ALL&group_and=ALL&start_entry_day=&start_entry_mon=&start_entry_year=&end_entry_day=&end_entry_mon=&end_entry_year=&min_score=&sort=ODATE&data_type=SHORT&aut_syn=YES&ttl_syn=YES&txt_syn=YES&aut_wt=1.0&obj_wt=1.0&ttl_wt=0.3&txt_wt=3.0&aut_wgt=YES&obj_wgt=YES&ttl_wgt=YES&txt_wgt=YES&ttl_sco=YES&txt_sco=YES&version=1) matches at least two authors (Edward Ford and Eric B. Ford). Unfortunately, using, say, `^Ford, E. B.` as the author and forcing exact name matching on ADS means that we lose records where the author is recorded as `^Ford, E.`. There may be a better solution to avoid this.
+  * Any other ideas? Suggestions on how to improve this analysis? File a bug or a pull request :)
