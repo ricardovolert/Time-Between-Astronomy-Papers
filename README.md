@@ -45,12 +45,19 @@ I only show up to the 15-th paper, as the number of authors that have more than 
 The following plot shows the number of authors that have published exactly `N` first-author papers satisfying the criteria. The file `max_npap.csv` simply contains the `id` and `max_npap` columns.
 
 ``` r
-max_npap <- read.csv("max_npap.csv")
+# Create percentages data frame
+max_npap <- read.csv('max_npap.csv')
+perc_npap <- max_npap %>%
+  group_by(max_npap) %>%
+  tally %>%
+  mutate(perc=sprintf("%.1f%%", 100*n/sum(n)))
+
 ggplot(max_npap, aes(x=max_npap)) +
-  geom_histogram(binwidth=1) +
+      geom_histogram() +
   xlab("Total number of 1st-author papers") +
   ylab("Number of authors") +
-  scale_x_discrete()
+  scale_x_discrete() +
+  geom_text(aes(x=max_npap, y=n, label=perc), data=perc_npap, vjust=-0.5, size=3)
 ```
 
 ![](README_files/figure-markdown_github/unnamed-chunk-2-1.png)
@@ -63,13 +70,20 @@ The following plot shows the number of papers published, grouped by journal name
 
 ``` r
 intervals <- read.csv("data.csv")
+
+papers_perc <- intervals %>%
+  group_by(bibcode) %>%
+  tally %>%
+  mutate(perc=sprintf("%.1f%%", 100*n/sum(n)))
+
 ggplot(intervals, aes(x=bibcode)) +
   xlab("Journal") +
   ylab("Number of 1st-author papers published") +
-  geom_histogram()
+  geom_histogram() +
+  geom_text(aes(x=bibcode, y=n, label=perc), data=papers_perc, vjust=-0.5, size=3)
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-3-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-3-1.png) I'm quite surprised by that an almost equal fraction of AJ and Nature papers are present in the sample, but a quick search on ADS seems to bear this out (*credit to Dr. Natalie Gosnell for pointing this out*.)
 
 ### Any summer/nice weather slump?
 
@@ -80,7 +94,7 @@ ggplot(intervals, aes(x=factor(month))) +
   xlab("Month") +
   ylab("Number of 1st-author papers published") +
   geom_histogram(binwidth=1) +
-  scale_x_discrete(labels=month.abb)
+  scale_x_discrete(labels=month.abb) 
 ```
 
 ![](README_files/figure-markdown_github/unnamed-chunk-4-1.png)
@@ -94,26 +108,8 @@ I use the `stringr`, `dplyr`, and `plyr` packages to munge the data I download f
 
 ``` r
 library(stringr)
+library(plyr)
 library(dplyr)
-```
-
-    ## 
-    ## Attaching package: 'dplyr'
-    ## 
-    ## The following objects are masked from 'package:plyr':
-    ## 
-    ##     arrange, count, desc, failwith, id, mutate, rename, summarise,
-    ##     summarize
-    ## 
-    ## The following objects are masked from 'package:stats':
-    ## 
-    ##     filter, lag
-    ## 
-    ## The following objects are masked from 'package:base':
-    ## 
-    ##     intersect, setdiff, setequal, union
-
-``` r
 library(memoise)
 library(rjson)
 library(latex2exp)
@@ -270,4 +266,4 @@ saveRDS(read_url, 'read_url.rds')
 ### Caveats
 
 -   Authors that have the same initial are counted together. For instance, [Ford, E.](http://adsabs.harvard.edu/cgi-bin/nph-abs_connect?db_key=AST&db_key=PRE&qform=AST&arxiv_sel=astro-ph&arxiv_sel=cond-mat&arxiv_sel=cs&arxiv_sel=gr-qc&arxiv_sel=hep-ex&arxiv_sel=hep-lat&arxiv_sel=hep-ph&arxiv_sel=hep-th&arxiv_sel=math&arxiv_sel=math-ph&arxiv_sel=nlin&arxiv_sel=nucl-ex&arxiv_sel=nucl-th&arxiv_sel=physics&arxiv_sel=quant-ph&arxiv_sel=q-bio&sim_query=YES&ned_query=YES&adsobj_query=YES&aut_logic=OR&obj_logic=OR&author=Ford%2C+E.&object=&start_mon=&start_year=&end_mon=&end_year=&ttl_logic=OR&title=&txt_logic=OR&text=&nr_to_return=200&start_nr=1&jou_pick=ALL&ref_stems=&data_and=ALL&group_and=ALL&start_entry_day=&start_entry_mon=&start_entry_year=&end_entry_day=&end_entry_mon=&end_entry_year=&min_score=&sort=ODATE&data_type=SHORT&aut_syn=YES&ttl_syn=YES&txt_syn=YES&aut_wt=1.0&obj_wt=1.0&ttl_wt=0.3&txt_wt=3.0&aut_wgt=YES&obj_wgt=YES&ttl_wgt=YES&txt_wgt=YES&ttl_sco=YES&txt_sco=YES&version=1) matches at least two authors (Edward Ford and Eric B. Ford). Unfortunately, using, say, `^Ford, E. B.` as the author and forcing exact name matching on ADS means that we lose records where the author is recorded as `^Ford, E.`. There may be a better solution to avoid this.
--   Any other ideas? Suggestions on how to improve this analysis? File a bug or a pull request :)
+-   Any other ideas? Suggestions on how to improve this analysis? File a bug or a pull request on the GitHub repository :)
