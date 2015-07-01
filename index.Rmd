@@ -56,12 +56,19 @@ I only show up to the 15-th paper, as the number of authors that have more than 
 ### Number of papers published per author
 The following plot shows the number of authors that have published exactly `N` first-author papers satisfying the criteria. The file `max_npap.csv` simply contains the `id` and `max_npap` columns.
 ```{r}
-max_npap <- read.csv("max_npap.csv")
+# Create percentages data frame
+max_npap <- read.csv('max_npap.csv')
+perc_npap <- max_npap %>%
+  group_by(max_npap) %>%
+  tally %>%
+  mutate(perc=sprintf("%.1f%%", 100*n/sum(n)))
+
 ggplot(max_npap, aes(x=max_npap)) +
-  geom_histogram(binwidth=1) +
+      geom_histogram() +
   xlab("Total number of 1st-author papers") +
   ylab("Number of authors") +
-  scale_x_discrete()
+  scale_x_discrete() +
+  geom_text(aes(x=max_npap, y=n, label=perc), data=perc_npap, vjust=-0.5, size=3)
 ```
 
 The rapid drop-off beyond 18 papers might be due to the fact that the total number of records is 40 (which include papers that are ultimately filtered out by the criteria above).
@@ -70,11 +77,19 @@ The rapid drop-off beyond 18 papers might be due to the fact that the total numb
 The following plot shows the number of papers published, grouped by journal name (the usual suspects: ApJ, AJ, A&A, Icarus, MNRAS, Nature, and Science). As expected, ApJ, A&A, and MNRAS figure prominently.
 ```{r}
 intervals <- read.csv("data.csv")
+
+papers_perc <- intervals %>%
+  group_by(bibcode) %>%
+  tally %>%
+  mutate(perc=sprintf("%.1f%%", 100*n/sum(n)))
+
 ggplot(intervals, aes(x=bibcode)) +
   xlab("Journal") +
   ylab("Number of 1st-author papers published") +
-  geom_histogram()
+  geom_histogram() +
+  geom_text(aes(x=bibcode, y=n, label=perc), data=papers_perc, vjust=-0.5, size=3)
 ```
+I'm quite surprised by that an almost equal fraction of AJ and Nature papers are present in the sample, but a quick search on ADS seems to bear this out (*credit to Dr. Natalie Gosnell for pointing this out*.)
 
 ### Any summer/nice weather slump?
 The following plot groups papers by month of publication. Seems pretty flat.
@@ -83,7 +98,8 @@ ggplot(intervals, aes(x=factor(month))) +
   xlab("Month") +
   ylab("Number of 1st-author papers published") +
   geom_histogram(binwidth=1) +
-  scale_x_discrete(labels=month.abb)
+  scale_x_discrete(labels=month.abb) +
+  geom_text(aes(x=max_npap, y=n, label=perc), data=perc_npap, vjust=-0.5, size=3)
 ```
 
 ## Procedure
