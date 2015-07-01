@@ -1,0 +1,13 @@
+base
+stringr
+magrittr
+foreach
+ggplot2
+plyr
+iterators
+doParallel
+knitr
+dplyr
+memoise
+rjson
+latex2exp
